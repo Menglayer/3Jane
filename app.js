@@ -1,10 +1,9 @@
 const CONVEX_URL = "https://opulent-crocodile-74.convex.cloud";
 const DEFAULT_JANE_FDV = 100_000_000;
-const RAW_APR_FDV = 250_000_000;
 const DEFAULT_JANE_SUPPLY = 3_330_000_000;
 const DEFAULT_TGE_BOUNDS = { min: 1_111_111_111, max: 6_666_666_666 };
 const YT_EXPIRY_DATE = new Date("2026-12-17T00:00:00Z");
-const CACHE_KEY = "three-jane-farm-calculator-cache-v3";
+const CACHE_KEY = "three-jane-farm-calculator-cache-v4";
 
 const ADDRESSES = {
   pendleUsd3Market: "0x4a5067c3ff1abb7449244025b0e37feaf77d8e3e",
@@ -279,10 +278,6 @@ function getJanePrice() {
   return state.janeSupply > 0 ? state.janeFdv / state.janeSupply : 0;
 }
 
-function getRawJanePriceAtMaxSupply() {
-  return state.tgeBounds.max > 0 ? RAW_APR_FDV / state.tgeBounds.max : 0;
-}
-
 async function convexCall(kind, path, args = {}) {
   const response = await fetch(`${CONVEX_URL}/api/${kind}`, {
     method: "POST",
@@ -481,65 +476,13 @@ function getEmissionDenominator(emissions) {
   return value || 0;
 }
 
-function getComponentWeeklyJane(component, rawJanePrice) {
-  const explicit = Number(component?.emissions);
-  if (Number.isFinite(explicit) && explicit > 0) return explicit;
-
-  const apr = Number(component?.minApr);
-  const denominator = Number(component?.aprDenominatorTvl ?? component?.earningTvl ?? component?.tvl);
-  if (rawJanePrice > 0 && Number.isFinite(apr) && apr > 0 && Number.isFinite(denominator) && denominator > 0) {
-    return (apr * denominator) / rawJanePrice / 52;
-  }
-
-  return 0;
-}
-
-function getRewardComponents(emissions) {
-  const rawJanePrice = getRawJanePriceAtMaxSupply();
-  const source =
-    emissions?.components?.length
-      ? emissions.components
-      : emissions
-        ? [
-            {
-              aprDenominatorTvl: emissions.aprDenominatorTvl ?? emissions.earningTvl ?? emissions.tvl,
-              emissions: emissions.emissions,
-              label: emissions.name,
-              minApr: emissions.minApr,
-              tvl: emissions.tvl,
-              type: "direct",
-            },
-          ]
-        : [];
-
-  return source
-    .map((component) => ({
-      denominator: Number(component?.aprDenominatorTvl ?? component?.earningTvl ?? component?.tvl ?? 0),
-      weeklyJane: getComponentWeeklyJane(component, rawJanePrice),
-      label: component?.label || component?.name || "",
-      type: component?.type || "direct",
-    }))
-    .filter((component) => component.denominator > 0 && component.weeklyJane > 0);
-}
-
 function getRewardMetrics(farm, rewardBase, principal, activeDays, annualizeDays = activeDays) {
-  const componentsSource = farm.rewardComponents?.length
-    ? farm.rewardComponents
-    : [{ denominator: farm.rewardDenominator, weeklyJane: farm.emissions }];
-  const components = componentsSource.map((component) => ({
-    ...component,
-    denominator:
-      farm.base?.mode === "yt" && farm.ytPrice > 0
-        ? Number(component.denominator) * farm.ytPrice
-        : Number(component.denominator),
-  }));
-  const weeklyJaneAmount = components.reduce((sum, component) => {
-    const denominator = Number(component.denominator);
-    const weeklyJane = Number(component.weeklyJane);
-    if (!(denominator > 0) || !(weeklyJane > 0) || !(rewardBase > 0)) return sum;
-    return sum + weeklyJane * (rewardBase / denominator);
-  }, 0);
-  const totalWeeklyJane = components.reduce((sum, component) => sum + Number(component.weeklyJane || 0), 0);
+  const denominator = Number(farm.tvl || 0);
+  const totalWeeklyJane = Number(farm.emissions || 0);
+  const weeklyJaneAmount =
+    denominator > 0 && totalWeeklyJane > 0 && rewardBase > 0
+      ? totalWeeklyJane * (rewardBase / denominator)
+      : 0;
   const janeAmount = weeklyJaneAmount * (Math.max(0, activeDays) / 7);
   const janeValue = janeAmount * getJanePrice();
   const janeApr =
@@ -557,11 +500,9 @@ function getRewardMetrics(farm, rewardBase, principal, activeDays, annualizeDays
 }
 
 function normalizeFarmData(farm, base, emissions, tvl) {
-  const rawJaneAprAtMaxSupply = Number((emissions?.combinedMinApr ?? emissions?.minApr ?? 0) * 100);
   const baseMin = Number(base.min || 0);
   const tvlNumber = Number(tvl);
   const rewardDenominator = getEmissionDenominator(emissions);
-  const rewardComponents = getRewardComponents(emissions);
   let tvlValue =
     Number.isFinite(tvlNumber) && tvlNumber > 0
       ? tvlNumber
@@ -574,11 +515,9 @@ function normalizeFarmData(farm, base, emissions, tvl) {
     ...farm,
     baseLabel: base.label,
     baseMin,
-    rawJaneAprAtMaxSupply,
     ytPrice: Number(base.ytPrice || 0),
     tvl: tvlValue,
     rewardDenominator,
-    rewardComponents,
     emissions: Number(emissions?.emissions || 0),
     updatedAt: Date.now(),
   };

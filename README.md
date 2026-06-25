@@ -18,7 +18,7 @@
 - 默认参数为 `100M` JANE FDV 和 `3.33B` JANE 数量。
 - JANE 价格按 `JANE FDV / JANE 数量` 计算。
 - JANE 奖励按页面/接口的每周 JANE 分配计算：`每周 JANE 分配 * 用户资产 / 该资产 reward TVL * 持有周数`。
-- 3Jane 实时 emissions APR 先从项目原始口径 `250M FDV / 6.66B supply` 归一化。
+- APR 展示由每周 JANE 份额、用户输入的 JANE 价格和持有天数年化得到。
 - YT 策略使用 Pendle 实时 YT 价格计算可买到的 YT 数量。
 - YT 的 JANE 分配也按实际投入资产价值 / YT 资本 TVL 计算；YT 底息才按 `本金 / YT 实时价格` 买到的 YT 数量计算。
 - YT 最终盈亏按 `YT 底息收益 + 到期 JANE 数量 * JANE 价格 - 到期归零的 YT 成本` 计算。
