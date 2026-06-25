@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="3Jane Farm calculator using live 3Jane, Pendle, Morpho, and Curve data."
+    />
+    <title>3Jane Farm Calculator</title>
+    <link rel="icon" href="https://app.3jane.xyz/logo.png" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script defer src="./app.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="https://app.3jane.xyz/farm" target="_blank" rel="noreferrer">
+        <img src="https://app.3jane.xyz/logo.png" alt="3Jane" />
+        <span>3Jane Farm Calculator</span>
+      </a>
+      <div class="topbar-actions">
+        <span id="statusPill" class="status-pill">Loading live data</span>
+        <button id="refreshButton" class="button button-secondary" type="button">Refresh</button>
+      </div>
+    </header>
+
+    <main class="page-shell">
+      <section class="market-strip" aria-label="Market snapshot">
+        <div class="metric">
+          <span class="metric-label">Total APY</span>
+          <strong id="stripTotalApy">--</strong>
+        </div>
+        <div class="metric">
+          <span class="metric-label">Base APY</span>
+          <strong id="stripBaseApy">--</strong>
+        </div>
+        <div class="metric">
+          <span class="metric-label">JANE APR</span>
+          <strong id="stripJaneApr">--</strong>
+        </div>
+        <div class="metric">
+          <span class="metric-label">TVL</span>
+          <strong id="stripTvl">--</strong>
+        </div>
+      </section>
+
+      <section class="workspace" aria-label="Calculator">
+        <aside class="farm-column">
+          <div class="section-heading">
+            <span>Farm</span>
+            <small id="lastUpdated">--</small>
+          </div>
+          <div id="farmList" class="farm-list" aria-label="Farm list"></div>
+        </aside>
+
+        <section class="calculator-card">
+          <div class="section-heading">
+            <span>Parameters</span>
+            <small id="selectedProtocol">--</small>
+          </div>
+
+          <div class="field-grid">
+            <label class="field">
+              <span>Principal USD</span>
+              <input id="amountInput" type="number" min="0" step="100" value="10000" inputmode="decimal" />
+            </label>
+
+            <label class="field">
+              <span>Holding Days</span>
+              <input id="daysInput" type="number" min="1" max="3650" step="1" value="175" inputmode="numeric" />
+            </label>
+          </div>
+
+          <label class="field field-wide">
+            <span>JANE FDV</span>
+            <div class="range-row">
+              <input id="fdvRange" type="range" min="50" max="1000" step="5" value="100" />
+              <input id="fdvInput" type="number" min="1" step="5" value="100" inputmode="decimal" />
+              <span class="suffix">M</span>
+            </div>
+          </label>
+
+          <label class="field field-wide">
+            <span>JANE Supply</span>
+            <div class="range-row">
+              <input id="janeSupplyRange" type="range" min="1.11" max="6.66" step="0.01" value="3.33" />
+              <input id="janeSupplyInput" type="number" min="0.01" step="0.01" value="3.33" inputmode="decimal" />
+              <span class="suffix">B</span>
+            </div>
+          </label>
+
+          <div class="segmented" role="group" aria-label="Compounding">
+            <button type="button" class="segment is-active" data-compounding="simple">Simple</button>
+            <button type="button" class="segment" data-compounding="daily">Daily</button>
+            <button type="button" class="segment" data-compounding="weekly">Weekly</button>
+            <button type="button" class="segment" data-compounding="monthly">Monthly</button>
+          </div>
+
+          <div class="rate-table" aria-label="Rate breakdown">
+            <div>
+              <span>JANE Price</span>
+              <strong id="janePrice">--</strong>
+            </div>
+            <div id="ytPriceRow" hidden>
+              <span>YT Price / Amount</span>
+              <strong id="ytPosition">--</strong>
+            </div>
+            <div id="ytMaturityRow" hidden>
+              <span>YT Expiry Loss</span>
+              <strong id="ytMaturityCost">--</strong>
+            </div>
+            <div>
+              <span>Base Return</span>
+              <strong id="baseRate">--</strong>
+            </div>
+            <div>
+              <span>JANE Rewards</span>
+              <strong id="janeRate">--</strong>
+            </div>
+            <div>
+              <span>Total APR</span>
+              <strong id="totalRate">--</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="result-card">
+          <div class="section-heading">
+            <span>Estimate</span>
+            <small id="dataSource">Live</small>
+          </div>
+
+          <div class="result-main">
+            <span>Projected PnL</span>
+            <strong id="projectedYield">--</strong>
+          </div>
+
+          <div class="result-grid">
+            <div>
+              <span>Ending Balance</span>
+              <strong id="endingBalance">--</strong>
+            </div>
+            <div>
+              <span>Daily PnL</span>
+              <strong id="dailyYield">--</strong>
+            </div>
+            <div>
+              <span>Annualized PnL</span>
+              <strong id="annualYield">--</strong>
+            </div>
+            <div>
+              <span>Effective APY</span>
+              <strong id="effectiveApy">--</strong>
+            </div>
+          </div>
+
+          <div class="projection">
+            <div class="projection-head">
+              <span>Projection</span>
+              <strong id="projectionLabel">--</strong>
+            </div>
+            <div id="projectionBars" class="projection-bars"></div>
+          </div>
+        </section>
+      </section>
+
+      <section class="source-row" aria-label="Sources">
+        <a href="https://app.3jane.xyz/farm" target="_blank" rel="noreferrer">3Jane Farm</a>
+        <a href="https://opulent-crocodile-74.convex.cloud" target="_blank" rel="noreferrer">3Jane Convex</a>
+        <a href="https://api-v2.pendle.finance" target="_blank" rel="noreferrer">Pendle API</a>
+        <a href="https://api.morpho.org/graphql" target="_blank" rel="noreferrer">Morpho API</a>
+        <a href="https://api.curve.finance/api" target="_blank" rel="noreferrer">Curve API</a>
+      </section>
+    </main>
+  </body>
+</html>
