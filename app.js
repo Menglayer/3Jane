@@ -522,6 +522,33 @@ function getRewardComponents(emissions) {
     .filter((component) => component.denominator > 0 && component.weeklyJane > 0);
 }
 
+function getRewardMetrics(farm, rewardBase, principal, activeDays, annualizeDays = activeDays) {
+  const components = farm.rewardComponents?.length
+    ? farm.rewardComponents
+    : [{ denominator: farm.rewardDenominator, weeklyJane: farm.emissions }];
+  const weeklyJaneAmount = components.reduce((sum, component) => {
+    const denominator = Number(component.denominator);
+    const weeklyJane = Number(component.weeklyJane);
+    if (!(denominator > 0) || !(weeklyJane > 0) || !(rewardBase > 0)) return sum;
+    return sum + weeklyJane * (rewardBase / denominator);
+  }, 0);
+  const totalWeeklyJane = components.reduce((sum, component) => sum + Number(component.weeklyJane || 0), 0);
+  const janeAmount = weeklyJaneAmount * (Math.max(0, activeDays) / 7);
+  const janeValue = janeAmount * getJanePrice();
+  const janeApr =
+    principal > 0 && annualizeDays > 0
+      ? (janeValue / principal) * (365 / annualizeDays) * 100
+      : 0;
+
+  return {
+    weeklyJaneAmount,
+    totalWeeklyJane,
+    janeAmount,
+    janeValue,
+    janeApr,
+  };
+}
+
 function normalizeFarmData(farm, base, emissions, tvl) {
   const rawJaneAprAtMaxSupply = Number((emissions?.combinedMinApr ?? emissions?.minApr ?? 0) * 100);
   const baseMin = Number(base.min || 0);
@@ -642,21 +669,9 @@ function getYtMetrics(farm, principal = state.amount, days = state.days) {
   const grossBaseApr = (grossBaseYield / principal) * (365 / days) * 100;
   const maturityCostApr = (maturityCost / principal) * (365 / days) * 100;
   const baseApr = (netBaseYield / principal) * (365 / days) * 100;
-  const components = farm.rewardComponents?.length
-    ? farm.rewardComponents
-    : [{ denominator: farm.rewardDenominator, weeklyJane: farm.emissions }];
-  const weeklyJaneAmount = components.reduce((sum, component) => {
-    const denominator = Number(component.denominator);
-    const weeklyJane = Number(component.weeklyJane);
-    if (!(denominator > 0) || !(weeklyJane > 0)) return sum;
-    return sum + weeklyJane * (units / denominator);
-  }, 0);
-  const totalWeeklyJane = components.reduce((sum, component) => sum + Number(component.weeklyJane || 0), 0);
-  const janeAmount = weeklyJaneAmount * (activeDays / 7);
-  const janeValue = janeAmount * getJanePrice();
-  const janeApr = (janeValue / principal) * (365 / days) * 100;
-  const totalValue = netBaseYield + janeValue;
-  const totalApr = baseApr + janeApr;
+  const rewardMetrics = getRewardMetrics(farm, units, principal, activeDays, days);
+  const totalValue = netBaseYield + rewardMetrics.janeValue;
+  const totalApr = baseApr + rewardMetrics.janeApr;
 
   return {
     units,
@@ -667,11 +682,7 @@ function getYtMetrics(farm, principal = state.amount, days = state.days) {
     grossBaseApr,
     maturityCostApr,
     baseApr,
-    weeklyJaneAmount,
-    totalWeeklyJane,
-    janeAmount,
-    janeValue,
-    janeApr,
+    ...rewardMetrics,
     totalValue,
     totalApr,
   };
@@ -693,24 +704,22 @@ function adjustedRates(farm, days = state.days, principal = state.amount) {
     };
   }
 
-  const defaultJanePriceAtMaxSupply = getRawJanePriceAtMaxSupply();
-  const janeAprPerNotional =
-    defaultJanePriceAtMaxSupply > 0
-      ? farm.rawJaneAprAtMaxSupply * (getJanePrice() / defaultJanePriceAtMaxSupply)
-      : 0;
-  const janeApr = janeAprPerNotional;
+  const rewardMetrics = getRewardMetrics(farm, principal, principal, days, days);
+  const janeApr = rewardMetrics.janeApr;
   const baseApr = baseAprForInvestment(farm, days, principal);
   const totalApr = baseApr + janeApr;
-  return { baseApr, janeApr, totalApr, janeAprPerNotional };
+  return { baseApr, janeApr, totalApr, janeAprPerNotional: janeApr, rewardMetrics };
 }
 
 function calculateProjectedYield(farm, principal, days) {
   const rates = adjustedRates(farm, days, principal);
   const ytMetrics = getYtMetrics(farm, principal, days);
   if (ytMetrics) {
-    return { value: ytMetrics.totalValue, rates, ytMetrics };
+    return { value: ytMetrics.totalValue, rates, ytMetrics, rewardMetrics: ytMetrics };
   }
-  return { value: estimateYield(principal, rates.totalApr, days, state.compounding), rates, ytMetrics: null };
+  const rewardMetrics = getRewardMetrics(farm, principal, principal, days, days);
+  const baseYield = estimateYield(principal, farm.baseMin, days, state.compounding);
+  return { value: baseYield + rewardMetrics.janeValue, rates, ytMetrics: null, rewardMetrics };
 }
 
 function estimateYield(principal, ratePercent, days, compounding) {
@@ -789,28 +798,35 @@ function renderProjection(farm, principal, days) {
     .join("");
 }
 
-function renderYtPosition(farm, principal) {
+function renderPositionDetails(farm, principal, projection) {
   const isYt = farm.base?.mode === "yt" && farm.ytPrice > 0;
+  const rewardMetrics = projection.rewardMetrics;
+  const hasRewards = rewardMetrics && rewardMetrics.totalWeeklyJane > 0;
   dom.ytPriceRow.hidden = !isYt;
   dom.ytMaturityRow.hidden = !isYt;
   dom.ytBaseInterestRow.hidden = !isYt;
-  dom.ytJaneAmountRow.hidden = !isYt;
-  dom.ytWeeklyJaneRow.hidden = !isYt;
+  dom.ytJaneAmountRow.hidden = !hasRewards;
+  dom.ytWeeklyJaneRow.hidden = !hasRewards;
   if (!isYt) {
     dom.ytPosition.textContent = "--";
     dom.ytMaturityCost.textContent = "--";
     dom.ytBaseInterest.textContent = "--";
+  }
+
+  if (!hasRewards) {
     dom.ytJaneAmount.textContent = "--";
     dom.ytWeeklyJane.textContent = "--";
-    return;
+  } else {
+    dom.ytJaneAmount.textContent = `${formatTokenAmount(rewardMetrics.janeAmount)} JANE / ${formatUsd(rewardMetrics.janeValue)}`;
+    dom.ytWeeklyJane.textContent = `${formatTokenAmount(rewardMetrics.totalWeeklyJane)} / ${formatTokenAmount(rewardMetrics.weeklyJaneAmount)} JANE`;
   }
+
+  if (!isYt) return;
 
   const ytMetrics = getYtMetrics(farm, principal, state.days);
   dom.ytPosition.textContent = `${formatTokenPrice(farm.ytPrice)} / ${formatTokenAmount(ytMetrics.units)} YT`;
   dom.ytMaturityCost.textContent = `-${formatUsd(ytMetrics.maturityCost)} (${formatPercent(-ytMetrics.maturityCostApr)})`;
   dom.ytBaseInterest.textContent = `${formatUsd(ytMetrics.grossBaseYield)} (${formatPercent(ytMetrics.grossBaseApr)})`;
-  dom.ytJaneAmount.textContent = `${formatTokenAmount(ytMetrics.janeAmount)} JANE / ${formatUsd(ytMetrics.janeValue)}`;
-  dom.ytWeeklyJane.textContent = `${formatTokenAmount(ytMetrics.totalWeeklyJane)} / ${formatTokenAmount(ytMetrics.weeklyJaneAmount)} JANE`;
 }
 
 function renderResults() {
@@ -840,7 +856,7 @@ function renderResults() {
   dom.projectionLabel.textContent = farm.name;
   dom.dataSource.textContent = state.dataMode === "live" ? "实时" : state.dataMode === "cache" ? "缓存" : "部分";
 
-  renderYtPosition(farm, principal);
+  renderPositionDetails(farm, principal, projection);
   renderProjection(farm, principal, days);
 }
 
