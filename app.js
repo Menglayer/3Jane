@@ -35,7 +35,7 @@ const FARMS = [
     protocol: "3Jane",
     asset: "USD3",
     icon: ASSETS.usd3,
-    base: { type: "convexApy", path: "onchain:getUsd3Apy", label: "USD3 APY" },
+    base: { type: "convexApy", path: "onchain:getUsd3Apy", label: "USD3 底层 APY" },
     emissionsKey: "USD3",
     tvlKey: "USD3",
     href: "https://app.3jane.xyz/supply",
@@ -46,7 +46,7 @@ const FARMS = [
     protocol: "3Jane",
     asset: "sUSD3",
     icon: ASSETS.susd3,
-    base: { type: "convexApy", path: "onchain:getSusd3Apy", label: "sUSD3 APY" },
+    base: { type: "convexApy", path: "onchain:getSusd3Apy", label: "sUSD3 底层 APY" },
     emissionsKey: "SUSD3",
     tvlKey: "SUSD3",
     href: "https://app.3jane.xyz/supply",
@@ -57,7 +57,7 @@ const FARMS = [
     protocol: "Morpho",
     asset: "USDC",
     icon: ASSETS.usdc,
-    base: { type: "morphoVault", label: "Morpho Vault Net APY" },
+    base: { type: "morphoVault", label: "Morpho Vault 净 APY" },
     emissionsKey: "MORPHO_3JANE_ECOSYSTEM_VAULT",
     tvlKey: "MORPHO_3JANE_ECOSYSTEM_VAULT",
     href: "https://app.morpho.org/ethereum/vault/0xe05faDf242331808f504661BEA65972594869826/3jane-ecosystem-vault",
@@ -80,7 +80,7 @@ const FARMS = [
     asset: "USD3",
     icon: ASSETS.ytUsd3,
     ytAddress: ADDRESSES.ytUsd3,
-    base: { type: "pendle", market: ADDRESSES.pendleUsd3Market, mode: "yt", label: "Underlying APY" },
+    base: { type: "pendle", market: ADDRESSES.pendleUsd3Market, mode: "yt", label: "底层 APY" },
     emissionsKey: "PENDLE_YT",
     tvlKey: "PENDLE_YT",
     href: "https://app.pendle.finance/trade/markets/0x4a5067c3ff1abb7449244025b0e37feaf77d8e3e/swap?view=yt&chain=ethereum&tab=info",
@@ -114,7 +114,7 @@ const FARMS = [
     asset: "sUSD3",
     icon: ASSETS.ytSusd3,
     ytAddress: ADDRESSES.ytSusd3,
-    base: { type: "pendle", market: ADDRESSES.pendleSusd3Market, mode: "yt", label: "Underlying APY" },
+    base: { type: "pendle", market: ADDRESSES.pendleSusd3Market, mode: "yt", label: "底层 APY" },
     emissionsKey: "PENDLE_SUSD3_YT",
     tvlKey: "PENDLE_SUSD3_YT",
     href: `https://app.pendle.finance/trade/markets/${ADDRESSES.pendleSusd3Market}/swap?view=yt&chain=ethereum`,
@@ -147,7 +147,7 @@ const FARMS = [
     protocol: "3Jane",
     asset: "USDC",
     icon: ASSETS.usdc,
-    base: { type: "zero", label: "Borrower rewards" },
+    base: { type: "zero", label: "借款激励" },
     emissionsKey: "MORPHO_BORROWERS",
     tvlKey: "MORPHO_BORROWERS",
     href: "https://app.3jane.xyz/pull",
@@ -524,7 +524,7 @@ function configureSupplyControls() {
 }
 
 async function loadLiveData() {
-  setStatus("Updating live data", "loading");
+  setStatus("正在更新实时数据", "loading");
   dom.refreshButton.disabled = true;
 
   const [boundsResult, farmResults] = await Promise.all([
@@ -555,7 +555,7 @@ async function loadLiveData() {
   );
 
   dom.refreshButton.disabled = false;
-  setStatus(failed ? "Partial live data" : "Live data synced", failed ? "error" : "live");
+  setStatus(failed ? "部分实时数据可用" : "实时数据已同步", failed ? "error" : "live");
   render();
 }
 
@@ -567,7 +567,7 @@ function loadCachedData() {
       if (cached.tgeBounds) state.tgeBounds = cached.tgeBounds;
       configureSupplyControls();
       state.dataMode = "cache";
-      setStatus("Using local cache", "error");
+      setStatus("使用本地缓存", "error");
       render();
       return true;
     }
@@ -748,7 +748,7 @@ function renderResults() {
   dom.annualYield.textContent = formatUsd(annualYield);
   dom.effectiveApy.textContent = formatPercent(effective);
   dom.projectionLabel.textContent = farm.name;
-  dom.dataSource.textContent = state.dataMode === "live" ? "Live" : state.dataMode === "cache" ? "Cache" : "Partial";
+  dom.dataSource.textContent = state.dataMode === "live" ? "实时" : state.dataMode === "cache" ? "缓存" : "部分";
 
   renderYtPosition(farm, principal);
   renderProjection(farm, principal, days);
@@ -835,7 +835,7 @@ function bindInputs() {
     loadLiveData().catch((error) => {
       console.error(error);
       dom.refreshButton.disabled = false;
-      setStatus("Refresh failed", "error");
+      setStatus("刷新失败", "error");
       if (!state.farms.length) loadCachedData();
     });
   });
@@ -852,7 +852,7 @@ async function boot() {
     console.error(error);
     dom.refreshButton.disabled = false;
     if (!loadCachedData()) {
-      setStatus("Data unavailable", "error");
+      setStatus("数据不可用", "error");
     }
   }
 }

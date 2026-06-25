@@ -97,7 +97,8 @@ a {
 }
 
 .status-pill,
-.button {
+.button,
+.twitter-link {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -106,6 +107,20 @@ a {
   white-space: nowrap;
   font-size: 13px;
   font-weight: 800;
+}
+
+.twitter-link {
+  border: 1px solid rgba(0, 41, 255, 0.32);
+  background: rgba(0, 41, 255, 0.08);
+  color: var(--blue);
+  padding: 0 12px;
+  text-decoration: none;
+}
+
+.twitter-link:hover,
+.source-twitter:hover {
+  border-color: rgba(0, 41, 255, 0.58);
+  background: rgba(0, 41, 255, 0.12);
 }
 
 .status-pill {
@@ -541,6 +556,12 @@ input[type="range"] {
   color: var(--blue);
 }
 
+.source-row .source-twitter {
+  border-color: rgba(0, 41, 255, 0.28);
+  background: rgba(0, 41, 255, 0.08);
+  color: var(--blue);
+}
+
 @media (max-width: 1080px) {
   .workspace {
     grid-template-columns: minmax(240px, 0.75fr) minmax(320px, 1fr);
@@ -561,7 +582,8 @@ input[type="range"] {
 
   .topbar-actions {
     width: 100%;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 1fr auto auto;
   }
 
   .page-shell {

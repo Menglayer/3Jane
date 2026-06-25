@@ -1,13 +1,13 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="3Jane Farm calculator using live 3Jane, Pendle, Morpho, and Curve data."
+      content="使用 3Jane、Pendle、Morpho 和 Curve 实时数据的 3Jane Farm 收益计算器。"
     />
-    <title>3Jane Farm Calculator</title>
+    <title>3Jane Farm 收益计算器</title>
     <link rel="icon" href="https://app.3jane.xyz/logo.png" />
     <link rel="stylesheet" href="./styles.css" />
     <script defer src="./app.js"></script>
@@ -16,26 +16,29 @@
     <header class="topbar">
       <a class="brand" href="https://app.3jane.xyz/farm" target="_blank" rel="noreferrer">
         <img src="https://app.3jane.xyz/logo.png" alt="3Jane" />
-        <span>3Jane Farm Calculator</span>
+        <span>3Jane Farm 收益计算器</span>
       </a>
       <div class="topbar-actions">
-        <span id="statusPill" class="status-pill">Loading live data</span>
-        <button id="refreshButton" class="button button-secondary" type="button">Refresh</button>
+        <a class="twitter-link" href="https://x.com/MengLayer" target="_blank" rel="noreferrer">
+          关注 @MengLayer
+        </a>
+        <span id="statusPill" class="status-pill">正在加载实时数据</span>
+        <button id="refreshButton" class="button button-secondary" type="button">刷新</button>
       </div>
     </header>
 
     <main class="page-shell">
-      <section class="market-strip" aria-label="Market snapshot">
+      <section class="market-strip" aria-label="市场概览">
         <div class="metric">
-          <span class="metric-label">Total APY</span>
+          <span class="metric-label">总 APR</span>
           <strong id="stripTotalApy">--</strong>
         </div>
         <div class="metric">
-          <span class="metric-label">Base APY</span>
+          <span class="metric-label">底层收益</span>
           <strong id="stripBaseApy">--</strong>
         </div>
         <div class="metric">
-          <span class="metric-label">JANE APR</span>
+          <span class="metric-label">JANE 奖励</span>
           <strong id="stripJaneApr">--</strong>
         </div>
         <div class="metric">
@@ -44,29 +47,29 @@
         </div>
       </section>
 
-      <section class="workspace" aria-label="Calculator">
+      <section class="workspace" aria-label="收益计算器">
         <aside class="farm-column">
           <div class="section-heading">
-            <span>Farm</span>
+            <span>策略</span>
             <small id="lastUpdated">--</small>
           </div>
-          <div id="farmList" class="farm-list" aria-label="Farm list"></div>
+          <div id="farmList" class="farm-list" aria-label="策略列表"></div>
         </aside>
 
         <section class="calculator-card">
           <div class="section-heading">
-            <span>Parameters</span>
+            <span>参数</span>
             <small id="selectedProtocol">--</small>
           </div>
 
           <div class="field-grid">
             <label class="field">
-              <span>Principal USD</span>
+              <span>本金 USD</span>
               <input id="amountInput" type="number" min="0" step="100" value="10000" inputmode="decimal" />
             </label>
 
             <label class="field">
-              <span>Holding Days</span>
+              <span>持有天数</span>
               <input id="daysInput" type="number" min="1" max="3650" step="1" value="175" inputmode="numeric" />
             </label>
           </div>
@@ -81,7 +84,7 @@
           </label>
 
           <label class="field field-wide">
-            <span>JANE Supply</span>
+            <span>JANE 数量</span>
             <div class="range-row">
               <input id="janeSupplyRange" type="range" min="1.11" max="6.66" step="0.01" value="3.33" />
               <input id="janeSupplyInput" type="number" min="0.01" step="0.01" value="3.33" inputmode="decimal" />
@@ -89,36 +92,36 @@
             </div>
           </label>
 
-          <div class="segmented" role="group" aria-label="Compounding">
-            <button type="button" class="segment is-active" data-compounding="simple">Simple</button>
-            <button type="button" class="segment" data-compounding="daily">Daily</button>
-            <button type="button" class="segment" data-compounding="weekly">Weekly</button>
-            <button type="button" class="segment" data-compounding="monthly">Monthly</button>
+          <div class="segmented" role="group" aria-label="复利方式">
+            <button type="button" class="segment is-active" data-compounding="simple">单利</button>
+            <button type="button" class="segment" data-compounding="daily">每日</button>
+            <button type="button" class="segment" data-compounding="weekly">每周</button>
+            <button type="button" class="segment" data-compounding="monthly">每月</button>
           </div>
 
-          <div class="rate-table" aria-label="Rate breakdown">
+          <div class="rate-table" aria-label="收益拆分">
             <div>
-              <span>JANE Price</span>
+              <span>JANE 价格</span>
               <strong id="janePrice">--</strong>
             </div>
             <div id="ytPriceRow" hidden>
-              <span>YT Price / Amount</span>
+              <span>YT 价格 / 数量</span>
               <strong id="ytPosition">--</strong>
             </div>
             <div id="ytMaturityRow" hidden>
-              <span>YT Expiry Loss</span>
+              <span>YT 到期归零</span>
               <strong id="ytMaturityCost">--</strong>
             </div>
             <div>
-              <span>Base Return</span>
+              <span>底层收益</span>
               <strong id="baseRate">--</strong>
             </div>
             <div>
-              <span>JANE Rewards</span>
+              <span>JANE 奖励</span>
               <strong id="janeRate">--</strong>
             </div>
             <div>
-              <span>Total APR</span>
+              <span>总 APR</span>
               <strong id="totalRate">--</strong>
             </div>
           </div>
@@ -126,37 +129,37 @@
 
         <section class="result-card">
           <div class="section-heading">
-            <span>Estimate</span>
-            <small id="dataSource">Live</small>
+            <span>预估结果</span>
+            <small id="dataSource">实时</small>
           </div>
 
           <div class="result-main">
-            <span>Projected PnL</span>
+            <span>预计盈亏</span>
             <strong id="projectedYield">--</strong>
           </div>
 
           <div class="result-grid">
             <div>
-              <span>Ending Balance</span>
+              <span>期末余额</span>
               <strong id="endingBalance">--</strong>
             </div>
             <div>
-              <span>Daily PnL</span>
+              <span>每日盈亏</span>
               <strong id="dailyYield">--</strong>
             </div>
             <div>
-              <span>Annualized PnL</span>
+              <span>年化盈亏</span>
               <strong id="annualYield">--</strong>
             </div>
             <div>
-              <span>Effective APY</span>
+              <span>有效 APY</span>
               <strong id="effectiveApy">--</strong>
             </div>
           </div>
 
           <div class="projection">
             <div class="projection-head">
-              <span>Projection</span>
+              <span>收益曲线</span>
               <strong id="projectionLabel">--</strong>
             </div>
             <div id="projectionBars" class="projection-bars"></div>
@@ -164,12 +167,13 @@
         </section>
       </section>
 
-      <section class="source-row" aria-label="Sources">
+      <section class="source-row" aria-label="数据来源">
         <a href="https://app.3jane.xyz/farm" target="_blank" rel="noreferrer">3Jane Farm</a>
         <a href="https://opulent-crocodile-74.convex.cloud" target="_blank" rel="noreferrer">3Jane Convex</a>
         <a href="https://api-v2.pendle.finance" target="_blank" rel="noreferrer">Pendle API</a>
         <a href="https://api.morpho.org/graphql" target="_blank" rel="noreferrer">Morpho API</a>
         <a href="https://api.curve.finance/api" target="_blank" rel="noreferrer">Curve API</a>
+        <a class="source-twitter" href="https://x.com/MengLayer" target="_blank" rel="noreferrer">作者 @MengLayer</a>
       </section>
     </main>
   </body>
