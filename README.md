@@ -20,7 +20,7 @@
 - JANE 奖励按页面/接口的每周 JANE 分配计算：`每周 JANE 分配 * 用户资产 / 该资产 reward TVL * 持有周数`。
 - 3Jane 实时 emissions APR 先从项目原始口径 `250M FDV / 6.66B supply` 归一化。
 - YT 策略使用 Pendle 实时 YT 价格计算可买到的 YT 数量。
-- YT 的用户资产按 `本金 / YT 实时价格` 换算为 YT notional，再参与每周 JANE 分配。
+- YT 的 JANE 分配也按实际投入资产价值 / YT 资本 TVL 计算；YT 底息才按 `本金 / YT 实时价格` 买到的 YT 数量计算。
 - YT 最终盈亏按 `YT 底息收益 + 到期 JANE 数量 * JANE 价格 - 到期归零的 YT 成本` 计算。
 - YT TVL 优先显示 `rewards denominator notional * 实时 YT 价格` 的资本口径。
 - Pendle PT TVL 在 3Jane emissions TVL 为 0 时，会回退到 Pendle 市场流动性加订单簿规模。

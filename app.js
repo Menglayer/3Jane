@@ -523,9 +523,16 @@ function getRewardComponents(emissions) {
 }
 
 function getRewardMetrics(farm, rewardBase, principal, activeDays, annualizeDays = activeDays) {
-  const components = farm.rewardComponents?.length
+  const componentsSource = farm.rewardComponents?.length
     ? farm.rewardComponents
     : [{ denominator: farm.rewardDenominator, weeklyJane: farm.emissions }];
+  const components = componentsSource.map((component) => ({
+    ...component,
+    denominator:
+      farm.base?.mode === "yt" && farm.ytPrice > 0
+        ? Number(component.denominator) * farm.ytPrice
+        : Number(component.denominator),
+  }));
   const weeklyJaneAmount = components.reduce((sum, component) => {
     const denominator = Number(component.denominator);
     const weeklyJane = Number(component.weeklyJane);
@@ -669,7 +676,7 @@ function getYtMetrics(farm, principal = state.amount, days = state.days) {
   const grossBaseApr = (grossBaseYield / principal) * (365 / days) * 100;
   const maturityCostApr = (maturityCost / principal) * (365 / days) * 100;
   const baseApr = (netBaseYield / principal) * (365 / days) * 100;
-  const rewardMetrics = getRewardMetrics(farm, units, principal, activeDays, days);
+  const rewardMetrics = getRewardMetrics(farm, principal, principal, activeDays, days);
   const totalValue = netBaseYield + rewardMetrics.janeValue;
   const totalApr = baseApr + rewardMetrics.janeApr;
 
