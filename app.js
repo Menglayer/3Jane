@@ -193,6 +193,8 @@ const dom = {
   ytBaseInterest: document.querySelector("#ytBaseInterest"),
   ytJaneAmountRow: document.querySelector("#ytJaneAmountRow"),
   ytJaneAmount: document.querySelector("#ytJaneAmount"),
+  ytWeeklyJaneRow: document.querySelector("#ytWeeklyJaneRow"),
+  ytWeeklyJane: document.querySelector("#ytWeeklyJane"),
   baseRate: document.querySelector("#baseRate"),
   janeRate: document.querySelector("#janeRate"),
   totalRate: document.querySelector("#totalRate"),
@@ -479,11 +481,53 @@ function getEmissionDenominator(emissions) {
   return value || 0;
 }
 
+function getComponentWeeklyJane(component, rawJanePrice) {
+  const explicit = Number(component?.emissions);
+  if (Number.isFinite(explicit) && explicit > 0) return explicit;
+
+  const apr = Number(component?.minApr);
+  const denominator = Number(component?.aprDenominatorTvl ?? component?.earningTvl ?? component?.tvl);
+  if (rawJanePrice > 0 && Number.isFinite(apr) && apr > 0 && Number.isFinite(denominator) && denominator > 0) {
+    return (apr * denominator) / rawJanePrice / 52;
+  }
+
+  return 0;
+}
+
+function getRewardComponents(emissions) {
+  const rawJanePrice = getRawJanePriceAtMaxSupply();
+  const source =
+    emissions?.components?.length
+      ? emissions.components
+      : emissions
+        ? [
+            {
+              aprDenominatorTvl: emissions.aprDenominatorTvl ?? emissions.earningTvl ?? emissions.tvl,
+              emissions: emissions.emissions,
+              label: emissions.name,
+              minApr: emissions.minApr,
+              tvl: emissions.tvl,
+              type: "direct",
+            },
+          ]
+        : [];
+
+  return source
+    .map((component) => ({
+      denominator: Number(component?.aprDenominatorTvl ?? component?.earningTvl ?? component?.tvl ?? 0),
+      weeklyJane: getComponentWeeklyJane(component, rawJanePrice),
+      label: component?.label || component?.name || "",
+      type: component?.type || "direct",
+    }))
+    .filter((component) => component.denominator > 0 && component.weeklyJane > 0);
+}
+
 function normalizeFarmData(farm, base, emissions, tvl) {
   const rawJaneAprAtMaxSupply = Number((emissions?.combinedMinApr ?? emissions?.minApr ?? 0) * 100);
   const baseMin = Number(base.min || 0);
   const tvlNumber = Number(tvl);
   const rewardDenominator = getEmissionDenominator(emissions);
+  const rewardComponents = getRewardComponents(emissions);
   let tvlValue =
     Number.isFinite(tvlNumber) && tvlNumber > 0
       ? tvlNumber
@@ -500,6 +544,7 @@ function normalizeFarmData(farm, base, emissions, tvl) {
     ytPrice: Number(base.ytPrice || 0),
     tvl: tvlValue,
     rewardDenominator,
+    rewardComponents,
     emissions: Number(emissions?.emissions || 0),
     updatedAt: Date.now(),
   };
@@ -597,10 +642,17 @@ function getYtMetrics(farm, principal = state.amount, days = state.days) {
   const grossBaseApr = (grossBaseYield / principal) * (365 / days) * 100;
   const maturityCostApr = (maturityCost / principal) * (365 / days) * 100;
   const baseApr = (netBaseYield / principal) * (365 / days) * 100;
-  const rawJanePrice = getRawJanePriceAtMaxSupply();
-  const annualJanePerYtNotional =
-    rawJanePrice > 0 ? (farm.rawJaneAprAtMaxSupply / 100) / rawJanePrice : 0;
-  const janeAmount = units * annualJanePerYtNotional * (activeDays / 365);
+  const components = farm.rewardComponents?.length
+    ? farm.rewardComponents
+    : [{ denominator: farm.rewardDenominator, weeklyJane: farm.emissions }];
+  const weeklyJaneAmount = components.reduce((sum, component) => {
+    const denominator = Number(component.denominator);
+    const weeklyJane = Number(component.weeklyJane);
+    if (!(denominator > 0) || !(weeklyJane > 0)) return sum;
+    return sum + weeklyJane * (units / denominator);
+  }, 0);
+  const totalWeeklyJane = components.reduce((sum, component) => sum + Number(component.weeklyJane || 0), 0);
+  const janeAmount = weeklyJaneAmount * (activeDays / 7);
   const janeValue = janeAmount * getJanePrice();
   const janeApr = (janeValue / principal) * (365 / days) * 100;
   const totalValue = netBaseYield + janeValue;
@@ -615,7 +667,8 @@ function getYtMetrics(farm, principal = state.amount, days = state.days) {
     grossBaseApr,
     maturityCostApr,
     baseApr,
-    annualJanePerYtNotional,
+    weeklyJaneAmount,
+    totalWeeklyJane,
     janeAmount,
     janeValue,
     janeApr,
@@ -742,11 +795,13 @@ function renderYtPosition(farm, principal) {
   dom.ytMaturityRow.hidden = !isYt;
   dom.ytBaseInterestRow.hidden = !isYt;
   dom.ytJaneAmountRow.hidden = !isYt;
+  dom.ytWeeklyJaneRow.hidden = !isYt;
   if (!isYt) {
     dom.ytPosition.textContent = "--";
     dom.ytMaturityCost.textContent = "--";
     dom.ytBaseInterest.textContent = "--";
     dom.ytJaneAmount.textContent = "--";
+    dom.ytWeeklyJane.textContent = "--";
     return;
   }
 
@@ -755,6 +810,7 @@ function renderYtPosition(farm, principal) {
   dom.ytMaturityCost.textContent = `-${formatUsd(ytMetrics.maturityCost)} (${formatPercent(-ytMetrics.maturityCostApr)})`;
   dom.ytBaseInterest.textContent = `${formatUsd(ytMetrics.grossBaseYield)} (${formatPercent(ytMetrics.grossBaseApr)})`;
   dom.ytJaneAmount.textContent = `${formatTokenAmount(ytMetrics.janeAmount)} JANE / ${formatUsd(ytMetrics.janeValue)}`;
+  dom.ytWeeklyJane.textContent = `${formatTokenAmount(ytMetrics.totalWeeklyJane)} / ${formatTokenAmount(ytMetrics.weeklyJaneAmount)} JANE`;
 }
 
 function renderResults() {
