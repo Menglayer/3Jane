@@ -189,6 +189,10 @@ const dom = {
   ytPosition: document.querySelector("#ytPosition"),
   ytMaturityRow: document.querySelector("#ytMaturityRow"),
   ytMaturityCost: document.querySelector("#ytMaturityCost"),
+  ytBaseInterestRow: document.querySelector("#ytBaseInterestRow"),
+  ytBaseInterest: document.querySelector("#ytBaseInterest"),
+  ytJaneAmountRow: document.querySelector("#ytJaneAmountRow"),
+  ytJaneAmount: document.querySelector("#ytJaneAmount"),
   baseRate: document.querySelector("#baseRate"),
   janeRate: document.querySelector("#janeRate"),
   totalRate: document.querySelector("#totalRate"),
@@ -271,6 +275,10 @@ function parseNumber(value, fallback = 0) {
 
 function getJanePrice() {
   return state.janeSupply > 0 ? state.janeFdv / state.janeSupply : 0;
+}
+
+function getRawJanePriceAtMaxSupply() {
+  return state.tgeBounds.max > 0 ? RAW_APR_FDV / state.tgeBounds.max : 0;
 }
 
 async function convexCall(kind, path, args = {}) {
@@ -589,6 +597,14 @@ function getYtMetrics(farm, principal = state.amount, days = state.days) {
   const grossBaseApr = (grossBaseYield / principal) * (365 / days) * 100;
   const maturityCostApr = (maturityCost / principal) * (365 / days) * 100;
   const baseApr = (netBaseYield / principal) * (365 / days) * 100;
+  const rawJanePrice = getRawJanePriceAtMaxSupply();
+  const annualJanePerYtNotional =
+    rawJanePrice > 0 ? (farm.rawJaneAprAtMaxSupply / 100) / rawJanePrice : 0;
+  const janeAmount = units * annualJanePerYtNotional * (activeDays / 365);
+  const janeValue = janeAmount * getJanePrice();
+  const janeApr = (janeValue / principal) * (365 / days) * 100;
+  const totalValue = netBaseYield + janeValue;
+  const totalApr = baseApr + janeApr;
 
   return {
     units,
@@ -599,6 +615,12 @@ function getYtMetrics(farm, principal = state.amount, days = state.days) {
     grossBaseApr,
     maturityCostApr,
     baseApr,
+    annualJanePerYtNotional,
+    janeAmount,
+    janeValue,
+    janeApr,
+    totalValue,
+    totalApr,
   };
 }
 
@@ -608,15 +630,22 @@ function baseAprForInvestment(farm, days = state.days, principal = state.amount)
 }
 
 function adjustedRates(farm, days = state.days, principal = state.amount) {
-  const defaultJanePriceAtMaxSupply = RAW_APR_FDV / state.tgeBounds.max;
+  const ytMetrics = getYtMetrics(farm, principal, days);
+  if (ytMetrics) {
+    return {
+      baseApr: ytMetrics.baseApr,
+      janeApr: ytMetrics.janeApr,
+      totalApr: ytMetrics.totalApr,
+      janeAprPerNotional: ytMetrics.janeApr * farm.ytPrice,
+    };
+  }
+
+  const defaultJanePriceAtMaxSupply = getRawJanePriceAtMaxSupply();
   const janeAprPerNotional =
     defaultJanePriceAtMaxSupply > 0
       ? farm.rawJaneAprAtMaxSupply * (getJanePrice() / defaultJanePriceAtMaxSupply)
       : 0;
-  const janeApr =
-    farm.base?.mode === "yt" && farm.ytPrice > 0
-      ? janeAprPerNotional / farm.ytPrice
-      : janeAprPerNotional;
+  const janeApr = janeAprPerNotional;
   const baseApr = baseAprForInvestment(farm, days, principal);
   const totalApr = baseApr + janeApr;
   return { baseApr, janeApr, totalApr, janeAprPerNotional };
@@ -626,8 +655,7 @@ function calculateProjectedYield(farm, principal, days) {
   const rates = adjustedRates(farm, days, principal);
   const ytMetrics = getYtMetrics(farm, principal, days);
   if (ytMetrics) {
-    const janeYield = estimateYield(principal, rates.janeApr, days, "simple");
-    return { value: ytMetrics.netBaseYield + janeYield, rates, ytMetrics };
+    return { value: ytMetrics.totalValue, rates, ytMetrics };
   }
   return { value: estimateYield(principal, rates.totalApr, days, state.compounding), rates, ytMetrics: null };
 }
@@ -712,15 +740,21 @@ function renderYtPosition(farm, principal) {
   const isYt = farm.base?.mode === "yt" && farm.ytPrice > 0;
   dom.ytPriceRow.hidden = !isYt;
   dom.ytMaturityRow.hidden = !isYt;
+  dom.ytBaseInterestRow.hidden = !isYt;
+  dom.ytJaneAmountRow.hidden = !isYt;
   if (!isYt) {
     dom.ytPosition.textContent = "--";
     dom.ytMaturityCost.textContent = "--";
+    dom.ytBaseInterest.textContent = "--";
+    dom.ytJaneAmount.textContent = "--";
     return;
   }
 
   const ytMetrics = getYtMetrics(farm, principal, state.days);
   dom.ytPosition.textContent = `${formatTokenPrice(farm.ytPrice)} / ${formatTokenAmount(ytMetrics.units)} YT`;
   dom.ytMaturityCost.textContent = `-${formatUsd(ytMetrics.maturityCost)} (${formatPercent(-ytMetrics.maturityCostApr)})`;
+  dom.ytBaseInterest.textContent = `${formatUsd(ytMetrics.grossBaseYield)} (${formatPercent(ytMetrics.grossBaseApr)})`;
+  dom.ytJaneAmount.textContent = `${formatTokenAmount(ytMetrics.janeAmount)} JANE / ${formatUsd(ytMetrics.janeValue)}`;
 }
 
 function renderResults() {
